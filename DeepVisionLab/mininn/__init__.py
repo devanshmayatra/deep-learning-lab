@@ -5,6 +5,8 @@ from .layers import (
     MaxPool2D,
     Flatten,
     BatchNorm2D,
+    GlobalAvgPool2D,
+    Dropout
 )
 from .containers import Sequential, ResidualBlock
 from .optim import Adam

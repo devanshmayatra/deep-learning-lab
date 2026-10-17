@@ -255,3 +255,47 @@ class BatchNorm2D:
     def parameters(self):
         return [self.gamma, self.beta]
     
+
+class GlobalAvgPool2D:
+    def __call__(self, x):
+        self.out = x.mean(dim=(2, 3))
+        return self.out
+
+    def parameters(self):
+        return []
+
+    def state_dict(self):
+        return {}
+
+    def load_state_dict(self, state):
+        if state:
+            raise ValueError("This layer expects an empty state dictionary.")
+
+
+class Dropout:
+    def __init__(self, p=0.5):
+        if not 0 <= p < 1:
+            raise ValueError("p must satisfy 0 <= p < 1.")
+
+        self.p = p
+        self.training = True
+
+    def __call__(self, x):
+        if not self.training or self.p == 0:
+            self.out = x
+        else:
+            keep_prob = 1 - self.p
+            mask = torch.rand_like(x) < keep_prob
+            self.out = x * mask / keep_prob
+
+        return self.out
+
+    def parameters(self):
+        return []
+
+    def state_dict(self):
+        return {}
+
+    def load_state_dict(self, state):
+        if state:
+            raise ValueError("Dropout expects an empty state dictionary.")
