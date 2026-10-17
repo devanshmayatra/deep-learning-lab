@@ -85,3 +85,56 @@ class Adam:
 
         self.learning_rate = state["learning_rate"]
         self.t = state["t"]
+        
+class AdamW(Adam):
+    def __init__(
+        self,
+        parameters,
+        learning_rate=0.001,
+        weight_decay=0.01,
+    ):
+        if weight_decay < 0:
+            raise ValueError("weight_decay must be non-negative.")
+
+        super().__init__(parameters, learning_rate)
+        self.weight_decay = weight_decay
+
+    def step(self):
+        # Apply decay separately from Adam's moment calculations.
+        with torch.no_grad():
+            for p in self.parameters:
+                if p.grad is not None:
+                    p.mul_(
+                        1 - self.learning_rate * self.weight_decay
+                    )
+
+        super().step()
+
+    def state_dict(self):
+        state = super().state_dict()
+        state["weight_decay"] = self.weight_decay
+        return state
+
+    def load_state_dict(self, state):
+        expected_keys = {
+            "learning_rate",
+            "weight_decay",
+            "t",
+            "first_moments",
+            "second_moments",
+        }
+
+        if set(state) != expected_keys:
+            raise ValueError("AdamW state keys do not match.")
+
+        if state["weight_decay"] < 0:
+            raise ValueError("weight_decay must be non-negative.")
+
+        # Pass Adam only the keys it expects.
+        adam_state = {
+            key: value
+            for key, value in state.items()
+            if key != "weight_decay"
+        }
+        super().load_state_dict(adam_state)
+        self.weight_decay = state["weight_decay"]
