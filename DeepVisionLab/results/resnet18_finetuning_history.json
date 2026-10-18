@@ -1,0 +1,32 @@
+{
+  "epoch": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "train_loss": [
+    0.3273,
+    0.2293,
+    0.1712,
+    0.1259,
+    0.0909
+  ],
+  "val_loss": [
+    0.3051,
+    0.2978,
+    0.2697,
+    0.2576,
+    0.2646
+  ],
+  "val_accuracy": [
+    89.1,
+    89.66,
+    90.46,
+    91.36,
+    91.1
+  ],
+  "selected_epoch": 4,
+  "source": "Recorded notebook output, rounded to displayed precision"
+}

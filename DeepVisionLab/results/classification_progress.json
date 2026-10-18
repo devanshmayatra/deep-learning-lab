@@ -1,0 +1,26 @@
+{
+  "experiments": [
+    {
+      "name": "Two-block CNN\n+ horizontal flips",
+      "validation_accuracy": 66.5,
+      "pretrained": false
+    },
+    {
+      "name": "Deeper residual CNN\n+ crops + AdamW",
+      "validation_accuracy": 78.42,
+      "pretrained": false
+    },
+    {
+      "name": "ResNet-18\nfrozen backbone",
+      "validation_accuracy": 86.58,
+      "pretrained": true
+    },
+    {
+      "name": "ResNet-18\nlast stage fine-tuned",
+      "validation_accuracy": 91.36,
+      "pretrained": true
+    }
+  ],
+  "selected_transfer_model_test_accuracy": 91.05,
+  "note": "Individual experiments with different architectures, training budgets, and preprocessing; not a controlled ablation."
+}

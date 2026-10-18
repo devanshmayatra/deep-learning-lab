@@ -1,0 +1,54 @@
+{
+  "sampling_seed": 42,
+  "selection": "First four correct and four incorrect in shuffled order",
+  "examples": [
+    {
+      "dataset_index": 7542,
+      "true_class": "ship",
+      "predicted_class": "ship",
+      "softmax_score": 0.997032642364502
+    },
+    {
+      "dataset_index": 8214,
+      "true_class": "automobile",
+      "predicted_class": "automobile",
+      "softmax_score": 0.9999967813491821
+    },
+    {
+      "dataset_index": 3698,
+      "true_class": "ship",
+      "predicted_class": "ship",
+      "softmax_score": 0.9979546070098877
+    },
+    {
+      "dataset_index": 2841,
+      "true_class": "bird",
+      "predicted_class": "bird",
+      "softmax_score": 0.916122317314148
+    },
+    {
+      "dataset_index": 2282,
+      "true_class": "truck",
+      "predicted_class": "automobile",
+      "softmax_score": 0.5499404668807983
+    },
+    {
+      "dataset_index": 6771,
+      "true_class": "dog",
+      "predicted_class": "cat",
+      "softmax_score": 0.743346631526947
+    },
+    {
+      "dataset_index": 5387,
+      "true_class": "cat",
+      "predicted_class": "deer",
+      "softmax_score": 0.5850557088851929
+    },
+    {
+      "dataset_index": 867,
+      "true_class": "horse",
+      "predicted_class": "deer",
+      "softmax_score": 0.8370879888534546
+    }
+  ]
+}
