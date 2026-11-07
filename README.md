@@ -163,7 +163,51 @@ The outputs are added elementwise. The custom block has **no ReLU after addition
 
 These custom models are simplified residual CNNs, not standard ResNet-18 implementations.
 
+## Fundamentals and Paper Implementations
+
+The focused foundation gate is complete. Additional notebook exercises connect the mathematical concepts to small, inspectable implementations.
+
+| Notebook / topic | Work completed |
+|---|---|
+| `embedding_lookup_and_linear_shapes.ipynb` | Embedding lookup, one-hot equivalence, bias broadcasting, linear transformations, token means, and flattening; fixed numerical outputs verified |
+| Gradients | Manual scalar linear-regression/MSE derivatives, autograd comparison, and three SGD updates |
+| Log-sum-exp | Stable log-sum-exp and cross-entropy; finite-input softmax, log-sum-exp, and cross-entropy implementations also tested in Rust |
+| PReLU | Forward values, manual input gradients, and summed shared-slope gradient checked against autograd |
+| Xavier initialization | Five-layer tanh comparison using small, Xavier, and large weight scales |
+| Convolution | Explicit sliding-window calculations and nonuniform multi-channel forward validation |
+
+### Initialization Comparison
+
+Five 100 → 100 tanh layers processed a batch of 256 examples. The experiment compared weight standard deviations of 0.01, 0.1 (Xavier), and 1.0, without training.
+
+| Weight scale | Final-layer activation standard deviation | Final-layer saturation (`abs(h) > 0.99`) |
+|---|---:|---:|
+| Small: 0.01 | ≈0.000010 | 0% |
+| Xavier: 0.1 | ≈0.324937 | 0% |
+| Large: 1.0 | ≈0.958301 | ≈77.93% |
+
+Small weights rapidly attenuated activations. Large weights retained substantial activation spread but saturated most tanh units, whose local derivatives approach zero. Xavier preserved more signal while limiting saturation. These are forward-activation measurements, not measured backward-gradient or convergence results.
+
+### Paper Reading and Implementation
+
+| Paper | Reading | Understanding | Implementation |
+|---|---|---|---|
+| Kingma & Ba — *Adam: A Method for Stochastic Optimization* | Complete | Focused review complete | Adam and AdamW implemented in MiniNN |
+| Guo et al. — *On Calibration of Modern Neural Networks* | Complete | Focused review complete | Standalone temperature scaling not yet implemented |
+| *Accurate Computation of the Log-Sum-Exp and Softmax Functions* | Complete | Focused review complete | Stable log-sum-exp, softmax, and cross-entropy implemented and tested in Python and Rust |
+| He et al. — *Delving Deep into Rectifiers* | Complete | Focused review complete | PReLU forward and manual gradients verified against autograd; He initialization used in MiniNN |
+| Glorot & Bengio — *Understanding the Difficulty of Training Deep Feedforward Neural Networks* | Complete | Focused review complete | Five-layer tanh initialization comparison complete: small, Xavier, and large weight scales |
+| Dumoulin & Visin — *A Guide to Convolution Arithmetic for Deep Learning* | Assigned early sections complete | Assigned review complete | Explicit forward convolution validated on a nonuniform multi-channel input; MiniNN additionally supports batching, stride, padding, bias, and autograd |
+| Szegedy et al. — *Going Deeper with Convolutions* | Pending — current reading | Pending | Inception implementation and benchmarking planned |
+| He et al. — *Deep Residual Learning for Image Recognition* | Pending | Pending | Simplified residual blocks already implemented; paper-specific architecture and benchmarking planned |
+
+Completed reviews cover the assigned study scope, not full experimental reproduction. Some practicals were completed with guidance.
+
+No additional papers will be assigned until the agreed ResNet work is complete.
+
 ## Dataset and Evaluation
+
+The results below describe the existing CIFAR-10 experiments. CIFAR-100 is planned as the next main architecture benchmark; no CIFAR-100 or MRI results are claimed here.
 
 - **Dataset:** CIFAR-10.
 - **Classes:** 10.
@@ -579,7 +623,23 @@ Ignore rules do not untrack files already committed. Generated files must be unt
 - [ ] Add reproducible multi-seed experiment tooling.
 - [ ] Improve package installation and documentation.
 - [ ] Save RNG and data-pipeline state for more complete resumption.
-- [ ] Expand into additional computer-vision tasks.
+- [x] Complete focused fundamentals and initialization practicals.
+- [x] Validate explicit forward convolution on a nonuniform multi-channel example.
+- [ ] Read and review the original Inception paper before implementation.
+- [ ] Implement Inception blocks and a small model using MiniNN.
+- [ ] Read and review the original ResNet paper; build and verify a specified ResNet architecture using MiniNN.
+- [ ] Benchmark a plain CNN, Inception, and ResNet on CIFAR-100.
+- [ ] Report multiple seeds, accuracy/top-5 accuracy, macro-F1, per-class results, calibration, parameter counts, latency, throughput, and peak GPU memory.
+- [ ] Audit the proposed brain-tumor MRI dataset for duplicates, split provenance, and patient identifiers, then compare classification models.
+- [ ] Begin segmentation after the classification benchmarks, using data with pixel-level masks.
+
+### Next Benchmark Protocol
+
+Reuse documented dataset splits and training/tuning budgets across the plain CNN, Inception, and ResNet comparisons. Select configurations using validation data and evaluate frozen choices on held-out test data. Compare published numbers only when architecture and experimental protocols are sufficiently comparable.
+
+The intended sequence is **CIFAR-100 classification → brain MRI classification → segmentation**. CIFAR-10 remains useful for debugging. Planned deliverables include reproducible configurations, learning curves, comparison tables, efficiency measurements, and error analysis; these are not completed results.
+
+Proposed MRI dataset: [Brain Tumor MRI Dataset](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset). Use patient-disjoint splits where identifiers allow verification, and disclose the limitation otherwise. Image classification labels do not establish segmentation-mask availability.
 
 ## Acknowledgments
 
