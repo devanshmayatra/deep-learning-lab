@@ -8,7 +8,7 @@ from .layers import (
     GlobalAvgPool2D,
     Dropout
 )
-from .containers import Sequential, ResidualBlock
 from .optim import Adam, AdamW
 from .training import train_one_epoch, evaluate
 from .checkpoint import save_checkpoint, load_checkpoint
+from .containers import Sequential, ResidualBlock, Inception

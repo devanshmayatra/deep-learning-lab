@@ -1,4 +1,4 @@
-from .layers import Conv2D, BatchNorm2D, ReLU
+from .layers import Conv2D, BatchNorm2D, ReLU, MaxPool2D
 
 class Sequential:
     def __init__(self, layers):
@@ -168,3 +168,108 @@ class ResidualBlock:
             params += self.shortcut.parameters()
 
         return params
+
+class Inception:
+    def __init__(self, in_channels, *, device="cpu", generator=None):
+
+        a = Conv2D(in_channels=in_channels, out_channels=16, kernel_size=1, device=device, generator=g)
+        a_act = ReLU()
+        
+        self.branch_a = Sequential([a,a_act])
+        
+        b_1 = Conv2D(in_channels=in_channels, out_channels=16, kernel_size=1, device=device, generator=g)
+        b1_act = ReLU()
+        
+        b = Conv2D(in_channels=16, out_channels=24, kernel_size=3, stride=1, padding=1, device=device, generator=g)
+        b_act = ReLU()
+        
+        self.branch_b = Sequential([b_1, b1_act, b, b_act])
+        
+        c_1 = Conv2D(in_channels=in_channels, out_channels=8, kernel_size=1, device=device, generator=g)
+        c1_act = ReLU()
+        
+        c = Conv2D(in_channels=8, out_channels=12, kernel_size=5, stride=1, padding=2, device=device, generator=g)
+        c_act = ReLU()
+        
+        self.branch_c = Sequential([c_1, c1_act, c, c_act])
+        
+        d = MaxPool2D(3,1,1)
+        d_1 = Conv2D(in_channels=in_channels, out_channels=8, kernel_size=1, device=device, generator=g)
+        d_act = ReLU()
+        
+        self.branch_d = Sequential([d, d_1, d_act])
+    
+    def __call__(self, x):
+        
+        output_a = self.branch_a(x)
+        output_b = self.branch_b(x)
+        output_c = self.branch_c(x)
+        output_d = self.branch_d(x)
+        
+        output = torch.cat(
+            (output_a, output_b, output_c, output_d),
+            dim=1,
+        )
+        return output
+    
+    def parameters(self):
+
+        return (
+            self.branch_a.parameters()
+            + self.branch_b.parameters()
+            + self.branch_c.parameters()
+            + self.branch_d.parameters()
+        )
+    
+    def train(self):
+        for branch in (
+            self.branch_a, self.branch_b,
+            self.branch_c, self.branch_d,
+        ):
+            branch.train()
+
+
+    def eval(self):
+        for branch in (
+            self.branch_a, self.branch_b,
+            self.branch_c, self.branch_d,
+        ):
+            branch.eval()
+
+
+    def state_dict(self):
+        state = {}
+
+        for name in ("branch_a", "branch_b", "branch_c", "branch_d"):
+            branch = getattr(self, name)
+
+            for key, tensor in branch.state_dict().items():
+                state[f"{name}.{key}"] = tensor
+
+        return state
+
+
+    def load_state_dict(self, state):
+        expected = self.state_dict()
+
+        # Validate every key and shape before changing parameters.
+        if set(state) != set(expected):
+            missing = set(expected) - set(state)
+            unexpected = set(state) - set(expected)
+            raise ValueError(
+                f"Missing keys: {sorted(missing)}; "
+                f"Unexpected keys: {sorted(unexpected)}"
+            )
+
+        for key, tensor in expected.items():
+            if state[key].shape != tensor.shape:
+                raise ValueError(f"Shape mismatch for {key}.")
+
+        for name in ("branch_a", "branch_b", "branch_c", "branch_d"):
+            prefix = f"{name}."
+            branch_state = {
+                key[len(prefix):]: tensor
+                for key, tensor in state.items()
+                if key.startswith(prefix)
+            }
+            getattr(self, name).load_state_dict(branch_state)

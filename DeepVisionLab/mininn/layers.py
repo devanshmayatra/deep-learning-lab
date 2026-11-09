@@ -65,14 +65,25 @@ class Conv2D:
         return [self.weight] + [self.bias]
     
 class MaxPool2D:
-    def __init__(self, kernel_size=2, stride=2):
+    def __init__(self, kernel_size=2, stride=2, padding=0):
         self.kernel_size = kernel_size
         self.stride = stride
+        self.padding = padding
 
     def __call__(self,x):
         # (B, C * k * k, number_of_patches)
+        
+        p = self.padding
+
+        x_padded = torch.nn.functional.pad(
+            x,
+            (p, p, p, p),  # left, right, top, bottom
+            mode="constant",
+            value=float("-inf"),
+        )
+        
         patches = torch.nn.functional.unfold(
-            x, kernel_size=self.kernel_size, stride=self.stride
+            x_padded, kernel_size=self.kernel_size, stride=self.stride
         )
         
         B, C, H, W = x.shape
@@ -82,8 +93,8 @@ class MaxPool2D:
         
         out = patches.max(dim=2).values
         
-        height_out = (H - k) // self.stride + 1
-        width_out = (W - k) // self.stride + 1
+        height_out = (H + 2*self.padding- k) // self.stride + 1
+        width_out = (W + 2*self.padding - k) // self.stride + 1
 
         self.out = out.reshape(B, C, height_out, width_out)
         return self.out
