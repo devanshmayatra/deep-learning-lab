@@ -6,7 +6,10 @@ from .layers import (
     Flatten,
     BatchNorm2D,
     GlobalAvgPool2D,
-    Dropout
+    Dropout,
+    SiLU,
+    ConvSwiGLU,
+    GroupNorm2D
 )
 from .optim import Adam, AdamW
 from .training import train_one_epoch, evaluate

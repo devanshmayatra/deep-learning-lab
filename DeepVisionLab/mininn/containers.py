@@ -1,4 +1,4 @@
-from .layers import Conv2D, BatchNorm2D, ReLU, MaxPool2D
+from .layers import Conv2D, BatchNorm2D, ReLU, MaxPool2D, ConvSwiGLU, GroupNorm2D
 import torch
 
 class Sequential:
@@ -66,40 +66,70 @@ class Sequential:
     
 class ResidualBlock:
     def __init__(
-        self, in_channels, out_channels=None, stride=1,
+        self, in_channels, out_channels=None, stride=1, activation=ReLU, use_swiglu=False,
         use_skip=True, *, device="cpu", generator=None
     ):
         if out_channels is None:
             out_channels = in_channels
 
         self.use_skip = use_skip
+        self.final_relu = activation()
+        
+        middle_activation = (
+            ConvSwiGLU(
+                out_channels, out_channels,
+                device=device, generator=generator,
+            )
+            if use_swiglu
+            else activation()
+        )
 
-        self.branch = Sequential([
+        if use_swiglu:
+            norm_before = GroupNorm2D(
+                out_channels, groups=8, device=device
+            )
+            norm_after = GroupNorm2D(
+                out_channels, groups=8, device=device
+            )
+        else:
+            norm_before = BatchNorm2D(out_channels, device=device)
+
+        branch_layers = [
             Conv2D(
                 in_channels, out_channels, 3,
                 stride=stride, padding=1,
-                device=device, generator=generator
+                device=device, generator=generator,
             ),
-            BatchNorm2D(out_channels, device=device),
-            ReLU(),
+            norm_before,
+            middle_activation,
+        ]
+
+        if use_swiglu:
+            branch_layers.append(norm_after)
+
+        branch_layers.extend([
             Conv2D(
                 out_channels, out_channels, 3,
-                stride=1, padding=1,
-                device=device, generator=generator
+                padding=1,
+                device=device, generator=generator,
             ),
             BatchNorm2D(out_channels, device=device),
         ])
+
+        self.branch = Sequential(branch_layers)
 
         self.shortcut = None
 
         if self.use_skip and (
             in_channels != out_channels or stride != 1
         ):
-            self.shortcut = Conv2D(
+            self.shortcut = Sequential([Conv2D(
                 in_channels, out_channels,
                 kernel_size=1, stride=stride,
                 device=device, generator=generator
-            )
+            ),
+            BatchNorm2D(out_channels, device=device),
+            ])
 
     def __call__(self, x):
         residual = self.branch(x)
@@ -110,13 +140,18 @@ class ResidualBlock:
         else:
             self.out = residual
 
+        self.out = self.final_relu(self.out)
         return self.out
     
     def train(self):
         self.branch.train()
+        if self.shortcut is not None:
+            self.shortcut.train()
 
     def eval(self):
         self.branch.eval()
+        if self.shortcut is not None:
+            self.shortcut.eval()
         
     def state_dict(self):
         state = {

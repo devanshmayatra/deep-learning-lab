@@ -194,6 +194,184 @@ class ReLU:
     
     def parameters(self):
         return []
+    
+class SiLU:
+    def __call__(self, x):
+        self.out = x * torch.sigmoid(x)
+        return self.out
+
+    def state_dict(self):
+            return {}
+        
+    def load_state_dict(self, state):
+        if state:
+            raise ValueError("This layer expects an empty state dictionary.")
+
+    def parameters(self):
+        return []
+    
+class ConvSwiGLU:
+    def __init__(
+        self, in_channels, out_channels,
+        *, device="cpu", generator=None,
+    ):
+        self.a = Conv2D(
+            in_channels, out_channels, kernel_size=1,
+            device=device, generator=generator,
+        )
+        self.b = Conv2D(
+            in_channels, out_channels, kernel_size=1,
+            device=device, generator=generator,
+        )
+        self.activation = SiLU()
+
+    def __call__(self, x):
+        a = self.a(x)
+        b = self.b(x)
+
+        self.out = self.activation(a) * b
+        return self.out
+
+    def parameters(self):
+        return self.a.parameters() + self.b.parameters()
+
+    def state_dict(self):
+        state = {}
+
+        for name, tensor in self.a.state_dict().items():
+            state[f"a.{name}"] = tensor
+
+        for name, tensor in self.b.state_dict().items():
+            state[f"b.{name}"] = tensor
+
+        return state
+            
+    def load_state_dict(self, state):
+        expected = self.state_dict()
+    
+        # Check keys before changing any weights.
+        if set(state) != set(expected):
+            missing = set(expected) - set(state)
+            unexpected = set(state) - set(expected)
+    
+            raise ValueError(
+                f"Missing keys: {sorted(missing)}; "
+                f"Unexpected keys: {sorted(unexpected)}"
+            )
+    
+        # Check tensor shapes.
+        for name, tensor in expected.items():
+            if state[name].shape != tensor.shape:
+                raise ValueError(f"Shape mismatch for {name}")
+    
+        a_state = {}
+        b_state = {}
+    
+        for name, tensor in state.items():
+            if name.startswith("a."):
+                a_state[name[2:]] = tensor
+            elif name.startswith("b."):
+                b_state[name[2:]] = tensor
+    
+        self.a.load_state_dict(a_state)
+        self.b.load_state_dict(b_state)
+    
+    def train(self):
+        pass
+    
+    def eval(self):
+        pass
+    
+
+class GroupNorm2D:
+    def __init__(
+        self, channels, groups=8, eps=1e-5,
+        *, device="cpu",
+    ):
+        if channels <= 0 or groups <= 0:
+            raise ValueError("channels and groups must be positive.")
+        if channels % groups != 0:
+            raise ValueError("channels must be divisible by groups.")
+        if eps <= 0:
+            raise ValueError("eps must be positive.")
+
+        self.channels = channels
+        self.groups = groups
+        self.eps = eps
+
+        shape = (1, channels, 1, 1)
+        self.gamma = torch.ones(
+            shape, device=device, requires_grad=True
+        )
+        self.beta = torch.zeros(
+            shape, device=device, requires_grad=True
+        )
+
+    def __call__(self, x):
+        if x.ndim != 4:
+            raise ValueError("Expected input shape (B, C, H, W).")
+
+        B, C, H, W = x.shape
+
+        if C != self.channels:
+            raise ValueError(
+                f"Expected {self.channels} channels, got {C}."
+            )
+        if (C // self.groups) * H * W <= 1:
+            raise ValueError(
+                "Each group must contain more than one value."
+            )
+
+        grouped = x.reshape(B, self.groups, C // self.groups, H, W)
+
+        mean = grouped.mean(dim=(2, 3, 4), keepdim=True)
+        var = grouped.var(
+            dim=(2, 3, 4),
+            unbiased=False,
+            keepdim=True,
+        )
+
+        normalized = (
+            (grouped - mean) / torch.sqrt(var + self.eps)
+        ).reshape(B, C, H, W)
+
+        self.out = self.gamma * normalized + self.beta
+        return self.out
+
+    def train(self):
+        pass
+
+    def eval(self):
+        pass
+
+    def parameters(self):
+        return [self.gamma, self.beta]
+
+    def state_dict(self):
+        return {
+            "gamma": self.gamma.detach().clone(),
+            "beta": self.beta.detach().clone(),
+        }
+
+    def load_state_dict(self, state):
+        expected = self.state_dict()
+
+        if set(state) != set(expected):
+            missing = set(expected) - set(state)
+            unexpected = set(state) - set(expected)
+
+            raise ValueError(
+                f"Missing keys: {sorted(missing)}; "
+                f"Unexpected keys: {sorted(unexpected)}"
+            )
+
+        for name, tensor in expected.items():
+            if state[name].shape != tensor.shape:
+                raise ValueError(f"Shape mismatch for {name}.")
+
+        with torch.no_grad():
+            self.gamma.copy_(state["gamma"])
+            self.beta.copy_(state["beta"])
 
 class BatchNorm2D:
     def __init__(

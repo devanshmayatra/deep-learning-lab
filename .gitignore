@@ -1,2 +1,5 @@
 /data/
 /data_1/
+*.pth
+*.pt
+*.h5
