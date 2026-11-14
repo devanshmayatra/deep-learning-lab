@@ -1,6 +1,6 @@
 import torch
 
-def train_one_epoch(model, loader, optimizer, device):
+def train_one_epoch(model, loader, optimizer, device, label_smoothing=0.0):
     model.train()
 
     total_loss = 0.0
@@ -13,7 +13,7 @@ def train_one_epoch(model, loader, optimizer, device):
         optimizer.zero_grad()
 
         logits = model(images)
-        loss = torch.nn.functional.cross_entropy(logits, labels)
+        loss = torch.nn.functional.cross_entropy(logits, labels, label_smoothing=label_smoothing)
         loss.backward()
         optimizer.step()
 
